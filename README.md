@@ -24,7 +24,7 @@ Real-time relativistic visualization of a rotating **Kerr black hole** with a vo
 
 ---
 
-## ⌨ Controls
+## Controls
 
 | Action | Input |
 |---|---|
@@ -38,7 +38,7 @@ Real-time relativistic visualization of a rotating **Kerr black hole** with a vo
 
 ---
 
-## 🎛 Parameters
+## Parameters
 
 | Slider | Range | Description |
 |---|---|---|
@@ -59,7 +59,7 @@ Real-time relativistic visualization of a rotating **Kerr black hole** with a vo
 
 ---
 
-## 🔬 Physics Reference
+## Physics Reference
 
 ### Kerr Metric — Key Radii
 
