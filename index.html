@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Relativistic black hole visualization — Kerr metric, RK4 geodesics, photon ring, Shakura-Sunyaev disk">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gargantua — Kerr Black Hole Simulation</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+        color: #fff;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+        cursor: grab;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    body:active { cursor: grabbing; }
+
+    /* ==================== TOP BAR ==================== */
+    #top-bar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 14px 16px;
+        z-index: 10;
+        pointer-events: none;
+        gap: 10px;
+    }
+
+    #info {
+        background: rgba(0,0,0,0.55);
+        padding: 9px 22px;
+        border-radius: 30px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,190,80,0.25);
+        font-size: 11px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #ffd98a;
+        text-shadow: 0 0 15px rgba(255,180,40,0.8);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 55vw;
+    }
+    #info span { color: #ff8c33; font-weight: 300; }
+
+    #stats-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        pointer-events: auto;
+    }
+
+    #speed-indicator, #fps {
+        background: rgba(8,8,16,0.75);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(255,180,60,0.22);
+        font-size: 10px;
+        color: rgba(255,180,60,0.8);
+        letter-spacing: 1.5px;
+        font-variant-numeric: tabular-nums;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    #info-btn {
+        position: fixed;
+        top: 54px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(15,12,25,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,180,60,0.35);
+        color: #ffaa33;
+        font-size: 17px;
+        font-weight: 700;
+        font-family: 'Segoe UI', sans-serif;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 55;
+        transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        box-shadow: 0 0 22px rgba(255,140,0,0.25);
+        pointer-events: auto;
+    }
+    #info-btn:hover, #info-btn.active {
+        background: rgba(40,28,10,0.95);
+        color: #ffcc66;
+        transform: scale(1.08);
+        box-shadow: 0 0 35px rgba(255,180,40,0.6);
+    }
+
+    /* ==================== INFO PANEL (INFO) ==================== */
+    #info-panel {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.88);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        z-index: 90;
+        display: none;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 70px 20px 40px;
+        animation: fadeIn 0.3s ease;
+    }
+    #info-panel.show { display: block; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    #info-panel-inner {
+        max-width: 860px;
+        margin: 0 auto;
+        color: #e8e0d0;
+        font-size: 13.5px;
+        line-height: 1.75;
+        letter-spacing: 0.3px;
+    }
+
+    #info-panel-inner h1 {
+        font-size: 22px;
+        color: #ffd98a;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        text-shadow: 0 0 20px rgba(255,180,40,0.5);
+    }
+    #info-panel-inner .subtitle {
+        font-size: 11px;
+        letter-spacing: 3px;
+        color: rgba(255,180,60,0.55);
+        text-transform: uppercase;
+        margin-bottom: 28px;
+    }
+    #info-panel-inner h2 {
+        font-size: 14px;
+        color: #ffaa33;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-top: 26px;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255,180,60,0.22);
+    }
+    #info-panel-inner h3 {
+        font-size: 12px;
+        color: #ffcc66;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-top: 18px;
+        margin-bottom: 8px;
+    }
+    #info-panel-inner p {
+        margin-bottom: 10px;
+        color: #cdc4b4;
+    }
+    #info-panel-inner ul {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 12px;
+    }
+    #info-panel-inner li {
+        padding-left: 20px;
+        position: relative;
+        margin-bottom: 6px;
+        color: #cdc4b4;
+    }
+    #info-panel-inner li::before {
+        content: '▸';
+        position: absolute;
+        left: 4px;
+        color: #ffaa33;
+    }
+    #info-panel-inner code, #info-panel-inner .formula {
+        background: rgba(255,180,60,0.08);
+        border: 1px solid rgba(255,180,60,0.2);
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        color: #ffd98a;
+        letter-spacing: 0.5px;
+    }
+    #info-panel-inner .formula {
+        display: block;
+        padding: 10px 14px;
+        margin: 8px 0 12px;
+        font-size: 13px;
+        text-align: center;
+        color: #ffcc66;
+        background: rgba(255,180,60,0.05);
+    }
+    #info-panel-inner .highlight {
+        color: #ffd98a;
+        font-weight: 600;
+    }
+
+    #info-close {
+        position: fixed;
+        top: 14px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(60,20,10,0.9);
+        border: 1px solid rgba(255,100,60,0.5);
+        color: #ff8866;
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 95;
+        transition: all 0.25s;
+    }
+    #info-close:hover {
+        background: rgba(90,30,15,1);
+        color: #ffaa88;
+        transform: rotate(90deg);
+    }
+
+    /* ==================== CONTROLS ==================== */
+    #controls {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(8,8,16,0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 12px 20px;
+        border-radius: 40px;
+        border: 1px solid rgba(255,180,60,0.28);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        z-index: 20;
+        box-shadow: 0 8px 60px rgba(255,120,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05);
+        transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1);
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: calc(100vw - 24px);
+        max-height: 42vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #controls.hidden {
+        opacity: 0;
+        transform: translateX(-50%) translateY(30px) scale(0.95);
+        pointer-events: none;
+    }
+
+    .control-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .control-item label {
+        font-size: 8.5px; text-transform: uppercase;
+        letter-spacing: 1px; color: #888; white-space: nowrap;
+    }
+    .control-item input {
+        width: 62px; cursor: pointer;
+        accent-color: #ffaa33; background: transparent;
+    }
+    .control-item span {
+        font-size: 9.5px; color: #ffaa33; font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    button {
+        background: linear-gradient(135deg, #ffb347 0%, #ff7b00 50%, #ff4d00 100%);
+        border: none; color: #1a0f00; font-weight: 700;
+        padding: 8px 16px; border-radius: 40px;
+        font-size: 10.5px; letter-spacing: 2px; cursor: pointer;
+        box-shadow: 0 0 30px rgba(255,150,30,0.5), inset 0 1px 0 rgba(255,255,255,0.4);
+        transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+        text-transform: uppercase; position: relative; overflow: hidden;
+    }
+    button::after {
+        content: ''; position: absolute;
+        top: 0; left: -100%; width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+        transition: left 0.6s ease;
+    }
+    button:hover::after { left: 100%; }
+    button:active { transform: scale(0.97); }
+
+    .preset-btn {
+        background: rgba(255,180,60,0.12);
+        color: #ffaa33;
+        border: 1px solid rgba(255,180,60,0.4);
+        box-shadow: none;
+        padding: 6px 10px; font-size: 8.5px; letter-spacing: 1px;
+    }
+    .preset-btn.active {
+        background: rgba(255,180,60,0.4);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(255,180,60,0.6);
+    }
+
+    .boost-btn {
+        background: linear-gradient(135deg, #ff5566 0%, #ff0044 100%) !important;
+        color: #fff !important;
+        box-shadow: 0 0 25px rgba(255,60,100,0.6), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+    }
+    .boost-btn.active {
+        background: linear-gradient(135deg, #66ddff 0%, #0088ff 100%) !important;
+        box-shadow: 0 0 40px rgba(80,180,255,0.9), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+    }
+
+    #toggle-settings {
+        position: absolute; bottom: 20px; right: 20px;
+        background: rgba(15,12,25,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,180,60,0.3);
+        color: #ffaa33;
+        width: 48px; height: 48px; border-radius: 50%;
+        font-size: 19px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; z-index: 25;
+        transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+        box-shadow: 0 0 25px rgba(255,140,0,0.2);
+    }
+    #toggle-settings:hover {
+        background: rgba(40,28,10,0.9);
+        color: #ffcc66;
+        transform: rotate(90deg) scale(1.1);
+    }
+
+    .hint {
+        position: absolute; bottom: 90px; left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255,255,255,0.28);
+        font-size: 10px; letter-spacing: 3px; z-index: 15;
+        white-space: nowrap; text-transform: uppercase;
+        pointer-events: none;
+        animation: pulseHint 3s ease-in-out infinite;
+    }
+    @keyframes pulseHint { 0%,100% { opacity: 0.2; } 50% { opacity: 0.5; } }
+
+    /* ==================== LOADER ==================== */
+    #loader {
+        position: absolute; inset: 0;
+        background: #000;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 18px; z-index: 100;
+        transition: opacity 1s ease;
+        color: #ffaa33; font-size: 12px; letter-spacing: 6px;
+        text-transform: uppercase;
+    }
+    #loader.hide { opacity: 0; pointer-events: none; }
+    .loader-ring {
+        width: 56px; height: 56px;
+        border: 2px solid rgba(255,170,51,0.2);
+        border-top-color: #ffaa33; border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ==================== TOAST ==================== */
+    #toast {
+        position: absolute; bottom: 200px; left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(0,0,0,0.8);
+        color: #ffd98a;
+        padding: 10px 24px;
+        border-radius: 30px;
+        border: 1px solid rgba(255,180,60,0.4);
+        font-size: 11px;
+        letter-spacing: 2px;
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+        pointer-events: none;
+        z-index: 30;
+        text-transform: uppercase;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        white-space: nowrap;
+        max-width: 90vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* ==================== TABLET ==================== */
+    @media (max-width: 1024px) {
+        #info { font-size: 10px; padding: 7px 16px; letter-spacing: 2px; max-width: 50vw; }
+        #speed-indicator, #fps { font-size: 9px; padding: 5px 10px; }
+        #info-btn { width: 40px; height: 40px; font-size: 15px; }
+        #controls { gap: 8px; padding: 10px 14px; bottom: 16px; }
+        .control-item input { width: 54px; }
+        #toggle-settings { bottom: 16px; right: 16px; width: 44px; height: 44px; }
+        .hint { bottom: 80px; }
+    }
+
+    /* ==================== MOBILE (важно!) ==================== */
+    @media (max-width: 720px) {
+        #top-bar {
+            padding: 10px 12px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+        }
+        #info {
+            font-size: 9px;
+            padding: 6px 14px;
+            letter-spacing: 1.5px;
+            max-width: calc(100vw - 70px);
+            text-align: center;
+        }
+        #stats-bar {
+            align-self: flex-start;
+            order: 3;
+        }
+        #speed-indicator, #fps {
+            font-size: 8.5px;
+            padding: 4px 8px;
+            letter-spacing: 1px;
+        }
+        #info-btn {
+            top: 10px;
+            right: 12px;
+            width: 38px;
+            height: 38px;
+            font-size: 14px;
+        }
+
+        #controls {
+            gap: 5px;
+            padding: 8px 10px;
+            bottom: 10px;
+            border-radius: 26px;
+            max-height: 46vh;
+        }
+        .control-item input { width: 46px; }
+        .control-item label { font-size: 7px; }
+        .control-item span { font-size: 8px; }
+        button { padding: 5px 9px; font-size: 8.5px; letter-spacing: 1px; }
+        .preset-btn { padding: 4px 6px; font-size: 7.5px; }
+        #toggle-settings {
+            bottom: 10px;
+            right: 10px;
+            width: 38px;
+            height: 38px;
+            font-size: 14px;
+        }
+        .hint {
+            font-size: 7px;
+            bottom: 72px;
+            letter-spacing: 2px;
+        }
+        #toast {
+            bottom: 130px;
+            font-size: 9px;
+            padding: 8px 16px;
+            letter-spacing: 1px;
+            max-width: 85vw;
+        }
+        #info-panel { padding: 60px 16px 30px; }
+        #info-panel-inner { font-size: 12.5px; line-height: 1.65; }
+        #info-panel-inner h1 { font-size: 17px; letter-spacing: 2px; }
+        #info-panel-inner h2 { font-size: 12px; margin-top: 20px; }
+        #info-panel-inner h3 { font-size: 11px; }
+        #info-panel-inner .subtitle { font-size: 9px; letter-spacing: 2px; margin-bottom: 20px; }
+        #info-close { top: 10px; right: 12px; width: 38px; height: 38px; font-size: 18px; }
+    }
+
+    @media (max-width: 420px) {
+        #info { font-size: 8px; letter-spacing: 1px; padding: 5px 10px; }
+        #speed-indicator, #fps { font-size: 8px; padding: 3px 6px; }
+        .control-item input { width: 40px; }
+        button { padding: 4px 7px; font-size: 7.5px; }
+        .preset-btn { padding: 3px 5px; font-size: 7px; }
+        #controls { gap: 4px; padding: 6px 8px; }
+        .hint { display: none; }
+    }
+
+    /* Landscape mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+        #controls { max-height: 55vh; padding: 6px 10px; bottom: 8px; }
+        .control-item label { font-size: 7px; }
+        .control-item input { width: 44px; }
+        button { padding: 4px 8px; font-size: 8px; }
+        .hint { display: none; }
+        #top-bar { flex-direction: row; align-items: center; }
+        #stats-bar { order: initial; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ==================== LOADER ==================== -->
+<div id="loader">
+    <div class="loader-ring"></div>
+    <div>Compiling shaders…</div>
+</div>
+
+<!-- ==================== TOP BAR ==================== -->
+<div id="top-bar">
+    <div id="info">⚫ GARGANTUA <span>•</span> KERR BLACK HOLE</div>
+    <div id="stats-bar">
+        <div id="speed-indicator">SPEED: 2.00×</div>
+        <div id="fps">— FPS</div>
+    </div>
+</div>
+
+<!-- ==================== INFO BUTTON ==================== -->
+<button id="info-btn" title="Algorithms & physics">i</button>
+
+<!-- ==================== INFO PANEL ==================== -->
+<div id="info-panel">
+    <button id="info-close" title="Close">×</button>
+    <div id="info-panel-inner">
+
+        <h1>⚫ Gargantua</h1>
+        <div class="subtitle">Relativistic Black Hole Simulation · Kerr Metric</div>
+
+        <p>Real-time ray-marched visualization of a rotating (Kerr) black hole with an accretion disk. Every pixel on screen is computed by tracing a photon backwards from the camera through curved spacetime.</p>
+
+        <h2>1. Spacetime Geometry — Kerr Metric</h2>
+        <p>The simulation uses the <span class="highlight">Kerr metric</span> — the exact solution of Einstein's field equations describing a rotating, uncharged black hole. The two key parameters are:</p>
+        <ul>
+            <li><span class="highlight">Spin a*</span> — dimensionless angular momentum, 0 = Schwarzschild (non-rotating), 0.998 = near-maximal (Thorne limit)</li>
+            <li><span class="highlight">Rs</span> — Schwarzschild radius (event horizon scale), set to 1.0 in our units</li>
+        </ul>
+
+        <h3>Event Horizon</h3>
+        <p>The outer horizon is computed as:</p>
+        <div class="formula">r₊ = M + √(M² − a²) = 1 + √(1 − a*²)</div>
+
+        <h3>ISCO — Innermost Stable Circular Orbit</h3>
+        <p>The inner edge of the accretion disk is set to the ISCO — the closest orbit where matter can stably rotate. Uses the <span class="highlight">Bardeen–Press–Teukolsky</span> formula:</p>
+        <div class="formula">Z₁ = 1 + (1−a²)<sup>1/3</sup> · [(1+a)<sup>1/3</sup> + (1−a)<sup>1/3</sup>]</div>
+        <div class="formula">Z₂ = √(3a² + Z₁²)</div>
+        <div class="formula">r_ISCO = 3 + Z₂ − √((3−Z₁)(3+Z₁+2Z₂))</div>
+        <p>For a non-rotating hole → r_ISCO = 6·M. For a* = 0.998 → r_ISCO ≈ 1.24·M.</p>
+
+        <h2>2. Photon Geodesics — RK4 Integration</h2>
+        <p>Light rays are bent by gravity. Instead of drawing straight lines, each ray is integrated through curved spacetime using the geodesic equation in the orbital plane:</p>
+        <div class="formula">d²u/dφ² = (3/2)·Rs·u² − u &nbsp;&nbsp; where u = 1/r</div>
+        <p>This is solved with a <span class="highlight">4th-order Runge–Kutta</span> integrator (RK4). Each step:</p>
+        <ul>
+            <li>Takes 4 slope estimates k₁…k₄</li>
+            <li>Combines them as (k₁ + 2k₂ + 2k₃ + k₄)/6</li>
+            <li>Error scales as O(h⁵) — very accurate</li>
+        </ul>
+        <p>Adaptive step size: smaller near the horizon and inside the disk, larger in empty space. This gives sharp shadows and smooth lensing.</p>
+
+        <h2>3. Accretion Disk — Shakura–Sunyaev Model</h2>
+        <p>The disk is a volumetric emissive medium between r_ISCO and r_outer = 14·Rs. Its temperature profile follows the classic thin-disk model:</p>
+        <div class="formula">T(r) ∝ r<sup>−3/4</sup> · (1 − √(r_in/r))<sup>1/4</sup></div>
+        <p>Peaks at r ≈ 1.36·r_in, drops towards both edges. The peak temperature is ~35,000 K → white-blue color at the inner edge, cooling to red at the outer edge.</p>
+
+        <h3>Density Structure</h3>
+        <ul>
+            <li>Vertical Gaussian: exp(−y²/h²), thickness h ∝ r</li>
+            <li>Radial smoothstep window between r_in and r_outer</li>
+            <li>Two superimposed spiral arms: sin(angle·k + phase)</li>
+            <li>Anisotropic noise stretched along the orbital direction</li>
+            <li>Differential rotation: Ω(r) ∝ r<sup>−3/2</sup> (Kepler)</li>
+        </ul>
+
+        <h2>4. Relativistic Effects</h2>
+
+        <h3>Doppler Beaming</h3>
+        <p>Matter on the approaching side of the disk moves towards the camera at relativistic speed. Its radiation is blue-shifted and dramatically brightened. The formula:</p>
+        <div class="formula">D = 1 / [γ·(1 − β·cosθ)]</div>
+        <p>where γ = 1/√(1−β²) is the Lorentz factor, β = v/c, and θ is the angle between velocity and line of sight.</p>
+
+        <h3>Gravitational Redshift</h3>
+        <p>Light escaping from deep inside the gravity well loses energy:</p>
+        <div class="formula">g_grav = √(1 − Rs/r)</div>
+
+        <h3>Combined Intensity</h3>
+        <p>The observed intensity uses the relativistic transfer law:</p>
+        <div class="formula">I_obs = g³ · μ_e · I_emit &nbsp;&nbsp; where g = D · g_grav</div>
+
+        <h3>Planck Color Temperature</h3>
+        <p>Emission color is derived from the observed black-body temperature T_obs = T_emit · g using a piecewise approximation of Planck's law (Tanner Helland). This naturally produces the blue/gold/red gradient.</p>
+
+        <h2>5. Photon Ring</h2>
+        <p>The bright thin ring at the shadow's edge is formed by photons that orbited the black hole 1–2 times before escaping to the camera. Our simulation detects them by tracking the minimum distance of each ray to the horizon. Rays that grazed close but escaped (captured = 0, minDist ≈ 0) form the ring. Rays that were captured (captured = 1) form the shadow.</p>
+        <p>The ring is asymmetric: brighter on the prograde side (moving towards us), dimmer on the retrograde side — matching real EHT observations of M87*.</p>
+
+        <h2>6. Rendering Pipeline</h2>
+        <ul>
+            <li><span class="highlight">Ray-marching</span> — 180 adaptive steps per ray</li>
+            <li><span class="highlight">Full-screen quad</span> — every pixel computed in one shader</li>
+            <li><span class="highlight">2× supersampling</span> at high quality for anti-aliasing</li>
+            <li><span class="highlight">ACES filmic tonemapping</span> — cinema-grade dynamic range</li>
+            <li><span class="highlight">UnrealBloom</span> — soft glow around bright features</li>
+            <li><span class="highlight">Chromatic aberration</span> + vignette for realism</li>
+        </ul>
+
+        <h2>7. Controls</h2>
+        <ul>
+            <li><span class="highlight">Drag</span> — rotate camera</li>
+            <li><span class="highlight">Scroll / pinch</span> — zoom</li>
+            <li><span class="highlight">Space</span> — pause / resume</li>
+            <li><span class="highlight">R</span> — reset camera</li>
+            <li><span class="highlight">H</span> — hide UI</li>
+            <li><span class="highlight">S</span> — save screenshot</li>
+            <li><span class="highlight">?</span> — this help</li>
+        </ul>
+
+        <p style="margin-top: 30px; text-align: center; color: rgba(255,180,60,0.5); font-size: 11px; letter-spacing: 2px;">
+            BASED ON THE KERR METRIC · RK4 GEODESICS · SHAKURA–SUNYAEV DISK
+        </p>
+    </div>
+</div>
+
+<!-- ==================== CONTROLS ==================== -->
+<div id="controls">
+    <div class="control-item">
+        <label>Spin a*</label>
+        <input type="range" id="spin" min="0" max="0.998" step="0.001" value="0.85">
+        <span id="spin-val">0.850</span>
+    </div>
+    <div class="control-item">
+        <label>Speed</label>
+        <input type="range" id="speed" min="0" max="5" step="0.01" value="2.0">
+        <span id="speed-val">2.00</span>
+    </div>
+    <div class="control-item">
+        <label>Brightness</label>
+        <input type="range" id="brightness" min="0.2" max="2.5" step="0.01" value="1.1">
+        <span id="brightness-val">1.10</span>
+    </div>
+    <div class="control-item">
+        <label>Exposure</label>
+        <input type="range" id="exposure" min="0.4" max="2.2" step="0.01" value="0.9">
+        <span id="exposure-val">0.90</span>
+    </div>
+    <div class="control-item">
+        <label>Lensing</label>
+        <input type="range" id="distortion" min="0" max="2.5" step="0.01" value="1.0">
+        <span id="distortion-val">1.00</span>
+    </div>
+    <div class="control-item">
+        <label>Tilt</label>
+        <input type="range" id="tilt" min="-1.2" max="1.2" step="0.01" value="0.25">
+        <span id="tilt-val">0.25</span>
+    </div>
+    <div class="control-item">
+        <label>Doppler</label>
+        <input type="range" id="doppler" min="0" max="2.5" step="0.01" value="1.2">
+        <span id="doppler-val">1.20</span>
+    </div>
+    <div class="control-item">
+        <label>Swirl</label>
+        <input type="range" id="swirl" min="0" max="3" step="0.01" value="1.5">
+        <span id="swirl-val">1.50</span>
+    </div>
+    <div class="control-item">
+        <label>Jets</label>
+        <input type="range" id="jetPower" min="0" max="2" step="0.01" value="0.8">
+        <span id="jet-val">0.80</span>
+    </div>
+    <div class="control-item">
+        <label>Density</label>
+        <input type="range" id="density" min="0.3" max="3.0" step="0.01" value="1.4">
+        <span id="density-val">1.40</span>
+    </div>
+    <div class="control-item">
+        <label>Quality</label>
+        <input type="range" id="quality" min="0.4" max="1.6" step="0.05" value="1.0">
+        <span id="quality-val">1.00</span>
+    </div>
+    <div class="control-item">
+        <label>Waves</label>
+        <input type="range" id="waves" min="0" max="2" step="0.01" value="0.6">
+        <span id="waves-val">0.60</span>
+    </div>
+    <div class="control-item">
+        <label>Shadow</label>
+        <input type="range" id="shadow" min="0" max="2" step="0.01" value="1.0">
+        <span id="shadow-val">1.00</span>
+    </div>
+    <div class="control-item">
+        <label>Ring</label>
+        <input type="range" id="ring" min="0" max="2" step="0.01" value="1.0">
+        <span id="ring-val">1.00</span>
+    </div>
+    <button id="start-btn">START</button>
+    <button class="preset-btn boost-btn" id="boost-btn" title="Speed ×2">×2</button>
+    <button class="preset-btn" id="preset-cinematic">CINEMA</button>
+    <button class="preset-btn" id="preset-science">SCIENCE</button>
+    <button class="preset-btn" id="preset-kerr" title="Maximum spin">KERR</button>
+    <button class="preset-btn" id="preset-eht" title="EHT-style">EHT</button>
+    <button class="preset-btn" id="preset-perf" title="Performance mode">PERF+</button>
+    <button class="preset-btn" id="preset-flare">FLARE</button>
+    <button class="preset-btn" id="toggle-expo">AUTO</button>
+</div>
+
+<div id="toggle-settings" title="Hide controls">⚙</div>
+<div class="hint">Drag to rotate · Scroll to zoom</div>
+<div id="toast"></div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// ============================================================
+// URL + LOCALSTORAGE
+// ============================================================
+const urlParams = new URLSearchParams(location.search);
+const STORAGE_KEY = 'gargantua_site_params';
+let savedParams = {};
+try { savedParams = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){}
+
+const defaults = {
+    spin: 0.85, speed: 2.0, brightness: 1.1, exposure: 0.9,
+    distortion: 1.0, tilt: 0.25, doppler: 1.2, swirl: 1.5,
+    jetPower: 0.8, density: 1.4, quality: 1.0, waves: 0.6, shadow: 1.0, ring: 1.0
+};
+const params = { ...defaults, ...savedParams };
+for (const key of Object.keys(defaults)) {
+    if (urlParams.has(key)) {
+        const val = parseFloat(urlParams.get(key));
+        if (!isNaN(val)) params[key] = val;
+    }
+}
+params.flare = 0;
+params.autoExposure = true;
+params.boost = 1.0;
+params.paused = false;
+
+// ============================================================
+// RENDERER
+// ============================================================
+const renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    powerPreference: "high-performance",
+    stencil: false,
+    depth: false
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.toneMapping = THREE.NoToneMapping;
+document.body.appendChild(renderer.domElement);
+
+// ============================================================
+// CAMERA
+// ============================================================
+const virtCamera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+virtCamera.position.set(0, 5, 24);
+
+const controls = new OrbitControls(virtCamera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.rotateSpeed = 0.55;
+controls.zoomSpeed = 0.7;
+controls.minDistance = 5.5;
+controls.maxDistance = 90;
+controls.enablePan = false;
+controls.target.set(0, 0, 0);
+
+// ============================================================
+// SHADER (не изменён ни на символ)
+// ============================================================
+const vertexShader = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 1.0);
+    }
+`;
+
+const fragmentShader = `
+precision highp float;
+
+varying vec2 vUv;
+
+uniform vec2  uResolution;
+uniform float uTime;
+uniform vec3  uCamPos;
+uniform float uBrightness;
+uniform float uDoppler;
+uniform float uDistortion;
+uniform float uTilt;
+uniform float uJetPower;
+uniform float uDensity;
+uniform float uFlare;
+uniform float uQuality;
+uniform float uWaves;
+uniform float uExposure;
+uniform float uSwirl;
+uniform float uSpin;
+uniform float uAgFlash;
+uniform float uFastNoise;
+uniform float uShadow;
+uniform float uRing;
+
+const float PI        = 3.14159265359;
+const int   MAX_STEPS = 180;
+const float R_OUTER   = 14.0;
+const float DISK_H    = 0.32;
+
+float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+        mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+            mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z
+    );
+}
+
+float anisoNoise(vec3 p, float angle) {
+    float c = cos(angle * 6.0);
+    float s = sin(angle * 6.0);
+    vec3 pp = vec3(p.x * c - p.z * s, p.y * 2.5, p.x * s + p.z * c);
+    return noise(pp);
+}
+
+float fbm(vec3 p, float octaves) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+        if (float(i) >= octaves) break;
+        v += a * noise(p);
+        p *= 2.05;
+        a *= 0.5;
+    }
+    return v;
+}
+
+float kerrHorizon(float a) {
+    return 1.0 + sqrt(max(0.0, 1.0 - a * a));
+}
+
+float kerrISCO(float a) {
+    float aa = clamp(abs(a), 0.0, 0.998);
+    if (aa < 0.001) return 6.0;
+    float a2 = aa * aa;
+    float w1 = pow(1.0 - a2, 1.0 / 3.0);
+    float w2 = pow(1.0 + aa, 1.0 / 3.0) + pow(1.0 - aa, 1.0 / 3.0);
+    float Z1 = 1.0 + w1 * w2;
+    float Z2 = sqrt(3.0 * a2 + Z1 * Z1);
+    float inner = max(0.0, (3.0 - Z1) * (3.0 + Z1 + 2.0 * Z2));
+    return 3.0 + Z2 - sqrt(inner);
+}
+
+vec3 planckColor(float T) {
+    T = clamp(T, 1000.0, 40000.0);
+    float t = T / 100.0;
+    float r, g, b;
+    if (t <= 66.0) {
+        r = 1.0;
+        g = clamp(0.39008157876 * log(t) - 0.63184144378, 0.0, 1.0);
+    } else {
+        r = clamp(1.29293618606 * pow(t - 60.0, -0.1332047592), 0.0, 1.0);
+        g = clamp(1.12989086089 * pow(t - 60.0, -0.0755148492), 0.0, 1.0);
+    }
+    if (t >= 66.0) b = 1.0;
+    else if (t <= 19.0) b = 0.0;
+    else b = clamp(0.54320678911 * log(t - 10.0) - 1.19625408914, 0.0, 1.0);
+    return vec3(r, g, b);
+}
+
+float shakuraSunyaev(float r, float rIn) {
+    if (r <= rIn) return 0.0;
+    float t1 = pow(r, -0.75);
+    float t2 = pow(max(0.0, 1.0 - sqrt(rIn / r)), 0.25);
+    return t1 * t2;
+}
+
+float rotationPhase(float r) {
+    float omega = pow(max(r, 1.5), -1.5) * uSwirl * 6.0;
+    float frameDrag = uSpin * 1.0 / max(r * r, 1.0);
+    omega += frameDrag * uSwirl;
+    omega = min(omega, 16.0);
+    return -uTime * omega;
+}
+
+vec3 starfield(vec3 dir, float gravFactor, float octaves) {
+    vec3 col = vec3(0.0);
+
+    vec3 p1 = dir * 220.0;
+    vec3 i1 = floor(p1);
+    vec3 f1 = fract(p1) - 0.5;
+    if (hash(i1) > 0.985) {
+        float d = length(f1);
+        float star = smoothstep(0.12, 0.0, d);
+        vec3 tint = mix(vec3(0.7, 0.85, 1.0), vec3(1.0, 0.8, 0.6), hash(i1 + 1.7));
+        col += tint * star * 6.0;
+    }
+
+    for (int layer = 0; layer < 2; layer++) {
+        float scale = 90.0 + float(layer) * 60.0;
+        vec3 p = dir * scale;
+        vec3 i = floor(p);
+        vec3 f = fract(p) - 0.5;
+        if (hash(i + float(layer) * 13.7) > 0.93) {
+            float d = length(f);
+            float star = smoothstep(0.2, 0.0, d);
+            vec3 tint = mix(vec3(0.85, 0.9, 1.0), vec3(1.0, 0.9, 0.75), hash(i + float(layer) * 3.1));
+            col += tint * star * 2.0;
+        }
+    }
+
+    float band = exp(-pow(dir.y * 3.5, 2.0));
+    col += vec3(0.12, 0.14, 0.28) * band * fbm(dir * 4.0 + 1.0, octaves) * 0.6;
+    col += vec3(0.25, 0.12, 0.20) * band * fbm(dir * 6.0 + 5.0, octaves) * 0.4;
+
+    if (gravFactor < 0.999) {
+        float shift = 1.0 - gravFactor;
+        col.r *= 1.0 + shift * 0.5;
+        col.g *= 1.0 - shift * 0.3;
+        col.b *= 1.0 - shift * 0.7;
+    }
+
+    return col;
+}
+
+float diskDensity(vec3 p, float octaves) {
+    float r = length(p.xz);
+    float rIn = kerrISCO(uSpin);
+    if (r < rIn || r > R_OUTER) return 0.0;
+
+    float h = DISK_H * (0.6 + 0.4 * (r / R_OUTER));
+    float vert = exp(-p.y * p.y / (h * h));
+
+    float radial = smoothstep(rIn, rIn + 0.4, r) *
+                   smoothstep(R_OUTER, R_OUTER - 4.0, r);
+
+    float angle = atan(p.z, p.x);
+    float phase = rotationPhase(r);
+
+    float spiral1 = sin(angle * 2.0 + phase * 2.0 + r * 0.6) * 0.5 + 0.5;
+    float spiral2 = sin(angle * 5.0 + phase * 3.0 - r * 0.4) * 0.5 + 0.5;
+    float spiral = 0.55 + 0.3 * spiral1 + 0.2 * spiral2;
+
+    float rotAngle = angle + phase;
+    float n1 = anisoNoise(
+        vec3(p.x * cos(phase) - p.z * sin(phase), p.y,
+             p.x * sin(phase) + p.z * cos(phase)) * 1.8,
+        rotAngle
+    );
+    float n2 = fbm(vec3(
+        (p.x * cos(phase * 0.7) - p.z * sin(phase * 0.7)) * 3.5,
+        p.y * 2.0,
+        (p.x * sin(phase * 0.7) + p.z * cos(phase * 0.7)) * 3.5
+    ) + vec3(uTime * 0.04, 0.0, uTime * 0.02), octaves);
+
+    float fibers = sin(rotAngle * 8.0 + r * 3.0) * 0.5 + 0.5;
+    fibers = mix(0.75, 1.0, fibers);
+
+    float clumps = 0.5 + 0.5 * n1 * n2 + 0.3 * n1;
+    clumps *= fibers;
+
+    float iscoBand = exp(-pow((r - rIn) * 1.5, 2.0)) * 0.8;
+
+    return radial * vert * clumps * spiral * (uDensity + iscoBand);
+}
+
+vec3 diskEmission(vec3 p, vec3 dir) {
+    float r = length(p.xz);
+    float rIn = kerrISCO(uSpin);
+
+    float Tprof = shakuraSunyaev(r, rIn);
+    float Tpeak = shakuraSunyaev(rIn * 1.36, rIn);
+    Tprof = Tprof / max(Tpeak, 0.001);
+
+    float T_peak = 35000.0;
+    float T_emit = T_peak * Tprof;
+
+    float v = sqrt(0.5 / max(r, rIn * 0.95));
+    v = min(v, 0.92);
+
+    vec3 tangent = normalize(vec3(-p.z, 0.0, p.x));
+    float cosTheta = dot(tangent, -dir);
+
+    float gamma = 1.0 / sqrt(max(1.0 - v * v, 0.001));
+    float denom = gamma * (1.0 - v * cosTheta * uDoppler);
+    float doppler = 1.0 / max(denom, 0.05);
+    doppler = clamp(doppler, 0.15, 4.0);
+
+    float grav = sqrt(max(0.0, 1.0 - 1.0 / max(r, 1.01)));
+    grav = clamp(grav, 0.2, 1.0);
+
+    float g = doppler * grav;
+    float mu_e = abs(cosTheta) * 0.5 + 0.5;
+
+    float intensity = pow(g, 2.4) * mu_e;
+    intensity *= (0.9 + uBrightness * 1.6);
+    intensity *= (1.0 + uFlare * 2.0 + uAgFlash * 1.5);
+
+    float T_obs = T_emit * g;
+    vec3 col = planckColor(T_obs);
+    col = pow(col, vec3(0.88));
+
+    if (uSwirl > 0.5) {
+        float pulsation = 0.85 + 0.15 * sin(rotationPhase(r) * 2.0 + r * 4.0);
+        intensity *= pulsation;
+    }
+
+    return col * intensity;
+}
+
+float jetDensity(vec3 p) {
+    if (uJetPower < 0.01) return 0.0;
+    float y = abs(p.y);
+    if (y < 1.5 || y > 22.0) return 0.0;
+
+    float r = length(p.xz);
+    float collimation = 0.12 * (1.0 - uSpin * 0.5);
+    float spread = 0.15 + (y - 1.5) * collimation * uJetPower;
+    if (r > spread * 3.0) return 0.0;
+
+    float radial = exp(-(r * r) / (spread * spread));
+    float falloff = exp(-(y - 1.5) * 0.15);
+
+    float angle = atan(p.z, p.x);
+    float pitch = 0.6 + uSpin * 0.8;
+    float jetPhase = uTime * 1.8 * uSwirl * 0.5;
+    float magneticSpiral = sin(angle * 2.0 + jetPhase + y * pitch) * 0.5 + 0.5;
+
+    float knots = 0.7 + 0.3 * sin(y * 0.9 - uTime * 2.0);
+    knots = mix(knots, 1.0, 0.5);
+
+    return radial * falloff * magneticSpiral * knots * uJetPower;
+}
+
+vec3 jetEmission(vec3 p) {
+    float y = abs(p.y);
+    float t = clamp((y - 1.5) / 25.0, 0.0, 1.0);
+    vec3 col = mix(vec3(0.75, 0.9, 1.0), vec3(0.35, 0.45, 1.0), t);
+    return col * 1.5 * (1.0 - t * 0.6) * (1.0 + uAgFlash * 1.5);
+}
+
+void rk4Step(inout float u, inout float du, float dphi, float K) {
+    float k1u = du;
+    float k1d = K * u * u - u;
+
+    float u2 = u + 0.5 * dphi * k1u;
+    float du2 = du + 0.5 * dphi * k1d;
+    float k2u = du2;
+    float k2d = K * u2 * u2 - u2;
+
+    float u3 = u + 0.5 * dphi * k2u;
+    float du3 = du + 0.5 * dphi * k2d;
+    float k3u = du3;
+    float k3d = K * u3 * u3 - u3;
+
+    float u4 = u + dphi * k3u;
+    float du4 = du + dphi * k3d;
+    float k4u = du4;
+    float k4d = K * u4 * u4 - u4;
+
+    u  += dphi / 6.0 * (k1u + 2.0 * k2u + 2.0 * k3u + k4u);
+    du += dphi / 6.0 * (k1d + 2.0 * k2d + 2.0 * k3d + k4d);
+}
+
+float hawkingGlow(vec3 pos) {
+    float r = length(pos);
+    float rH = kerrHorizon(uSpin);
+    float d = r - rH;
+
+    float core = exp(-d * d * 80.0) * 0.5;
+    float mid  = exp(-d * d * 15.0) * 0.15;
+    float wide = exp(-d * d * 3.0) * 0.03;
+
+    float flicker = 0.7 + 0.3 * sin(uTime * 8.0 + r * 20.0);
+    return (core + mid + wide) * flicker;
+}
+
+vec3 traceRay(vec3 origin, vec3 dir, out float minDistToHorizon, out float capturedFlag) {
+    vec3 pos = origin;
+    vec3 color = vec3(0.0);
+    float transmittance = 1.0;
+    bool captured = false;
+    minDistToHorizon = 1e10;
+
+    float rH = kerrHorizon(uSpin);
+    float Rs = 1.0;
+    int steps = int(float(MAX_STEPS) * clamp(uQuality, 0.3, 1.6));
+
+    float octaves = (uFastNoise > 0.5) ? 3.0 : 4.0;
+
+    vec3 L_vec = cross(pos, dir);
+    float h = length(L_vec);
+    float r0 = length(pos);
+    float u = 1.0 / r0;
+    float vr = dot(pos, dir) / r0;
+    float du = -vr / max(h, 0.001);
+
+    vec3 e1 = pos / r0;
+    vec3 Lhat = L_vec / max(h, 0.0001);
+    vec3 e2 = cross(Lhat, e1);
+
+    float rIn = kerrISCO(uSpin);
+    float rIn09 = rIn * 0.9;
+    float rOut11 = R_OUTER * 1.1;
+    float diskH25 = DISK_H * 2.5;
+
+    float phiTotal = 0.0;
+    float dphiBase = 0.04 / clamp(uQuality, 0.5, 1.5);
+
+    for (int i = 0; i < MAX_STEPS; i++) {
+        if (i >= steps) break;
+        if (phiTotal > 12.0) break;
+
+        float r = 1.0 / max(u, 0.0001);
+
+        if (r < rH * 1.005) { captured = true; break; }
+        minDistToHorizon = min(minDistToHorizon, r - rH);
+
+        float cosPhi = cos(phiTotal);
+        float sinPhi = sin(phiTotal);
+        pos = r * (cosPhi * e1 + sinPhi * e2);
+
+        float rxz = length(pos.xz);
+        float ay = abs(pos.y);
+
+        float dphi = dphiBase;
+        if (r < 6.0) dphi *= (r - rH + 0.5) * 0.5;
+        bool inDiskBand = (ay < diskH25) && (rxz < rOut11) && (rxz > rIn09);
+        if (inDiskBand) {
+            dphi *= 0.35;
+        } else {
+            bool farFromAll = (r > 8.0) && (rxz > rOut11) && (ay > diskH25);
+            if (farFromAll && uJetPower < 0.01) {
+                dphi *= 3.5;
+            } else if (farFromAll) {
+                dphi *= 2.0;
+            }
+        }
+        dphi = clamp(dphi, 0.005, 0.3);
+
+        vec3 e_r = cosPhi * e1 + sinPhi * e2;
+        vec3 e_phi = -sinPhi * e1 + cosPhi * e2;
+        float drdphi = -du / (u * u);
+        vec3 localDir = normalize(drdphi * e_r + r * e_phi);
+
+        if (uSpin > 0.01 && r < 12.0) {
+            float dragStrength = uSpin * 0.10 * (1.0 - r / 12.0);
+            vec3 tang = normalize(cross(vec3(0.0, 1.0, 0.0), pos));
+            localDir = normalize(localDir + tang * dragStrength * 1.2);
+        }
+
+        dir = localDir;
+
+        if (inDiskBand) {
+            float dens = diskDensity(pos, octaves);
+            if (dens > 0.001) {
+                vec3 em = diskEmission(pos, dir);
+                color += em * dens * dphi * 0.5 * transmittance;
+                transmittance *= exp(-dens * dphi * 0.3);
+            }
+        }
+
+        if (uJetPower > 0.01 && ay > 1.5 && ay < 22.0) {
+            float jd = jetDensity(pos);
+            if (jd > 0.001) {
+                vec3 em = jetEmission(pos);
+                color += em * jd * dphi * 0.15 * transmittance;
+                transmittance *= exp(-jd * dphi * 0.2);
+            }
+        }
+
+        if (r < rH + 1.5) {
+            float hg = hawkingGlow(pos);
+            if (hg > 0.001) {
+                color += vec3(0.5, 0.7, 1.0) * hg * dphi * transmittance * 0.15;
+            }
+        }
+
+        if (r > 40.0) {
+            float gravFactor = sqrt(max(0.0, 1.0 - Rs / 40.0));
+            color += starfield(dir, gravFactor, octaves) * transmittance;
+            transmittance = 0.0;
+            break;
+        }
+
+        float K = 1.5 * Rs * uDistortion;
+        if (uWaves > 0.01) {
+            float wave = sin(r * 3.0 - uTime * 2.0) * uWaves * 0.18;
+            K *= (1.0 + wave);
+        }
+
+        rk4Step(u, du, dphi, K);
+        phiTotal += dphi;
+
+        if (transmittance < 0.005) break;
+    }
+
+    capturedFlag = captured ? 1.0 : 0.0;
+
+    if (!captured && transmittance > 0.005) {
+        float rEnd = length(pos);
+        float gravFactor = sqrt(max(0.0, 1.0 - Rs / max(rEnd, 1.5)));
+        color += starfield(dir, gravFactor, octaves) * transmittance;
+    }
+
+    return color;
+}
+
+vec3 ACESFilm(vec3 x) {
+    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+vec3 colorGrade(vec3 col, vec2 uv) {
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    vec3 shadows = col * vec3(1.08, 0.96, 0.88);
+    vec3 highlights = col * vec3(0.94, 0.98, 1.06);
+    col = mix(shadows, highlights, smoothstep(0.28, 0.82, lum));
+    col = mix(vec3(lum), col, 1.12);
+
+    vec2 c = uv - 0.5;
+    float vig = clamp(1.0 - dot(c, c) * 0.9, 0.0, 1.0);
+    col *= vig;
+    return col;
+}
+
+vec3 chromatic(vec3 col, vec2 uv) {
+    vec2 c = uv - 0.5;
+    float shift = dot(c, c) * 0.008;
+    return col * (1.0 - shift) + col.gbr * shift * 0.7;
+}
+
+void main() {
+    vec2 uv = (vUv * 2.0 - 1.0);
+    uv.x *= uResolution.x / uResolution.y;
+
+    float cosT = cos(uTilt);
+    float sinT = sin(uTilt);
+
+    vec3 camPosRot = vec3(
+        uCamPos.x,
+        uCamPos.y * cosT - uCamPos.z * sinT,
+        uCamPos.y * sinT + uCamPos.z * cosT
+    );
+
+    vec3 camForward = normalize(-camPosRot);
+
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    vec3 camRight = normalize(cross(camForward, worldUp));
+    vec3 camUp = cross(camRight, camForward);
+
+    float fov = 0.85;
+    vec3 dir = normalize(camForward + uv.x * camRight * fov + uv.y * camUp * fov);
+
+    vec3 col;
+    float minDist;
+    float capturedFlag;
+
+    if (uQuality > 1.0) {
+        vec2 jitter = vec2(0.25, 0.25) / uResolution;
+
+        vec2 uvA = uv + jitter;
+        vec3 dirA = normalize(camForward + uvA.x * camRight * fov + uvA.y * camUp * fov);
+        float minA, capA;
+        vec3 colA = traceRay(camPosRot, dirA, minA, capA);
+
+        vec2 uvB = uv - jitter;
+        vec3 dirB = normalize(camForward + uvB.x * camRight * fov + uvB.y * camUp * fov);
+        float minB, capB;
+        vec3 colB = traceRay(camPosRot, dirB, minB, capB);
+
+        col = (colA + colB) * 0.5;
+        minDist = min(minA, minB);
+        capturedFlag = (capA + capB) * 0.5;
+    } else {
+        col = traceRay(camPosRot, dir, minDist, capturedFlag);
+    }
+
+    float escaped = 1.0 - capturedFlag;
+    float ringVisibility = clamp(uDistortion, 0.0, 1.0) * uRing;
+
+    float ringOffset = minDist - 0.10;
+    float ringCore = exp(-pow(ringOffset * 14.0, 2.0)) * escaped;
+    float ringHalo = exp(-pow(ringOffset * 6.0, 2.0)) * 0.4 * escaped;
+    float innerGlow = exp(-pow(ringOffset * 22.0, 2.0)) * 0.2 * escaped;
+
+    float ringIntensity = (ringCore + ringHalo + innerGlow) * ringVisibility;
+
+    float progSign = sign(uv.x);
+    float asymFactor = 1.0 + uSpin * 0.5 * (progSign > 0.0 ? 1.0 : -0.35);
+    ringIntensity *= asymFactor;
+    ringIntensity = clamp(ringIntensity, 0.0, 2.0);
+
+    float shadowFactor = capturedFlag * uShadow;
+    col *= (1.0 - shadowFactor * 0.97);
+
+    vec3 ringColor = vec3(1.0, 0.93, 0.75);
+    ringColor = mix(ringColor, vec3(0.85, 0.93, 1.0),
+                    clamp(uSpin * 0.4 * (progSign * 0.5 + 0.5), 0.0, 1.0));
+
+    col += ringColor * ringIntensity * 1.6;
+
+    col *= uExposure;
+    col = ACESFilm(col);
+
+    vec2 uvScreen = vUv;
+    col = colorGrade(col, uvScreen);
+    col = chromatic(col, uvScreen);
+
+    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const uniforms = {
+    uResolution: { value: new THREE.Vector2(innerWidth, innerHeight) },
+    uTime: { value: 0 },
+    uCamPos: { value: new THREE.Vector3(0, 5, 24) },
+    uBrightness: { value: params.brightness },
+    uDoppler: { value: params.doppler },
+    uDistortion: { value: params.distortion },
+    uTilt: { value: params.tilt },
+    uJetPower: { value: params.jetPower },
+    uDensity: { value: params.density },
+    uFlare: { value: 0 },
+    uQuality: { value: params.quality },
+    uWaves: { value: params.waves },
+    uExposure: { value: params.exposure },
+    uSwirl: { value: params.swirl },
+    uSpin: { value: params.spin },
+    uAgFlash: { value: 0 },
+    uFastNoise: { value: 0 },
+    uShadow: { value: params.shadow },
+    uRing: { value: params.ring }
+};
+
+const quadMat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader,
+    fragmentShader,
+    depthTest: false,
+    depthWrite: false
+});
+
+const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), quadMat);
+const renderScene = new THREE.Scene();
+renderScene.add(quad);
+const renderCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(renderScene, renderCam));
+
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(innerWidth, innerHeight),
+    0.5, 0.72, 0.72
+);
+composer.addPass(bloomPass);
+
+// ============================================================
+// UI
+// ============================================================
+const $ = id => document.getElementById(id);
+const spinInput = $('spin');
+const speedInput = $('speed'), brightnessInput = $('brightness'), exposureInput = $('exposure');
+const distortionInput = $('distortion'), tiltInput = $('tilt');
+const dopplerInput = $('doppler'), jetInput = $('jetPower');
+const swirlInput = $('swirl');
+const densityInput = $('density'), qualityInput = $('quality');
+const wavesInput = $('waves'), shadowInput = $('shadow'), ringInput = $('ring');
+const spinVal = $('spin-val');
+const speedVal = $('speed-val'), brightnessVal = $('brightness-val'), exposureVal = $('exposure-val');
+const distortionVal = $('distortion-val'), tiltVal = $('tilt-val');
+const dopplerVal = $('doppler-val'), jetVal = $('jet-val');
+const swirlVal = $('swirl-val');
+const densityVal = $('density-val'), qualityVal = $('quality-val');
+const wavesVal = $('waves-val'), shadowVal = $('shadow-val'), ringVal = $('ring-val');
+const startBtn = $('start-btn'), controlsDiv = $('controls'), toggleBtn = $('toggle-settings');
+const fpsEl = $('fps'), expoBtn = $('toggle-expo');
+const speedIndicator = $('speed-indicator');
+const boostBtn = $('boost-btn');
+const toast = $('toast');
+const infoBtn = $('info-btn'), infoPanel = $('info-panel'), infoClose = $('info-close');
+
+spinInput.value = params.spin;
+spinVal.textContent = params.spin.toFixed(3);
+const uiMap = [
+    [speedInput, speedVal, 'speed', 2],
+    [brightnessInput, brightnessVal, 'brightness', 2],
+    [exposureInput, exposureVal, 'exposure', 2],
+    [distortionInput, distortionVal, 'distortion', 2],
+    [tiltInput, tiltVal, 'tilt', 2],
+    [dopplerInput, dopplerVal, 'doppler', 2],
+    [jetInput, jetVal, 'jetPower', 2],
+    [swirlInput, swirlVal, 'swirl', 2],
+    [densityInput, densityVal, 'density', 2],
+    [qualityInput, qualityVal, 'quality', 2],
+    [wavesInput, wavesVal, 'waves', 2],
+    [shadowInput, shadowVal, 'shadow', 2],
+    [ringInput, ringVal, 'ring', 2]
+];
+uiMap.forEach(([inp, val, key, dec]) => {
+    inp.value = params[key];
+    val.textContent = params[key].toFixed(dec);
+});
+
+function updateFastNoise() {
+    uniforms.uFastNoise.value = params.quality < 0.85 ? 1.0 : 0.0;
+}
+updateFastNoise();
+
+let saveTimer = null;
+function saveParamsDebounced() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                spin: params.spin, speed: params.speed, brightness: params.brightness,
+                exposure: params.exposure, distortion: params.distortion, tilt: params.tilt,
+                doppler: params.doppler, swirl: params.swirl, jetPower: params.jetPower,
+                density: params.density, quality: params.quality, waves: params.waves,
+                shadow: params.shadow, ring: params.ring
+            }));
+        } catch(e) {}
+    }, 500);
+}
+
+function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+function bindSlider(input, valEl, key, uniform, decimals = 2) {
+    input.addEventListener('input', e => {
+        params[key] = +e.target.value;
+        valEl.textContent = params[key].toFixed(decimals);
+        if (uniform) uniforms[uniform].value = params[key];
+        if (key === 'quality') updateFastNoise();
+        saveParamsDebounced();
+    });
+}
+
+spinInput.addEventListener('input', e => {
+    params.spin = +e.target.value;
+    spinVal.textContent = params.spin.toFixed(3);
+    uniforms.uSpin.value = params.spin;
+    saveParamsDebounced();
+});
+
+bindSlider(speedInput, speedVal, 'speed');
+bindSlider(brightnessInput, brightnessVal, 'brightness', 'uBrightness');
+bindSlider(exposureInput, exposureVal, 'exposure', 'uExposure');
+bindSlider(distortionInput, distortionVal, 'distortion', 'uDistortion');
+bindSlider(tiltInput, tiltVal, 'tilt', 'uTilt');
+bindSlider(dopplerInput, dopplerVal, 'doppler', 'uDoppler');
+bindSlider(jetInput, jetVal, 'jetPower', 'uJetPower');
+bindSlider(swirlInput, swirlVal, 'swirl', 'uSwirl');
+bindSlider(densityInput, densityVal, 'density', 'uDensity');
+bindSlider(qualityInput, qualityVal, 'quality', 'uQuality');
+bindSlider(wavesInput, wavesVal, 'waves', 'uWaves');
+bindSlider(shadowInput, shadowVal, 'shadow', 'uShadow');
+bindSlider(ringInput, ringVal, 'ring', 'uRing');
+
+expoBtn.addEventListener('click', () => {
+    params.autoExposure = !params.autoExposure;
+    expoBtn.classList.toggle('active', params.autoExposure);
+    expoBtn.textContent = params.autoExposure ? 'AUTO' : 'MANUAL';
+});
+expoBtn.classList.add('active');
+
+boostBtn.addEventListener('click', () => {
+    params.boost = params.boost > 1.0 ? 1.0 : 2.5;
+    boostBtn.classList.toggle('active', params.boost > 1.0);
+    boostBtn.textContent = params.boost > 1.0 ? '×1' : '×2';
+    shakeCamera(0.15, 0.4);
+    showToast(params.boost > 1.0 ? 'Speed ×2.5' : 'Normal speed');
+});
+
+function applyPreset(p) {
+    Object.assign(params, p);
+    spinInput.value = params.spin;
+    spinVal.textContent = params.spin.toFixed(3);
+    uiMap.forEach(([inp, val, key, dec]) => {
+        inp.value = params[key];
+        val.textContent = params[key].toFixed(dec);
+    });
+    uniforms.uSpin.value = params.spin;
+    uniforms.uBrightness.value = params.brightness;
+    uniforms.uExposure.value = params.exposure;
+    uniforms.uDistortion.value = params.distortion;
+    uniforms.uTilt.value = params.tilt;
+    uniforms.uDoppler.value = params.doppler;
+    uniforms.uJetPower.value = params.jetPower;
+    uniforms.uSwirl.value = params.swirl;
+    uniforms.uDensity.value = params.density;
+    uniforms.uQuality.value = params.quality;
+    uniforms.uWaves.value = params.waves;
+    uniforms.uShadow.value = params.shadow;
+    uniforms.uRing.value = params.ring;
+    updateFastNoise();
+    saveParamsDebounced();
+    showToast('Preset applied');
+}
+
+$('preset-cinematic').addEventListener('click', () => applyPreset({
+    spin: 0.7, speed: 2.0, brightness: 1.2, exposure: 0.95, distortion: 1.3,
+    tilt: 0.2, doppler: 1.3, swirl: 1.6, jetPower: 0.7, density: 1.5,
+    quality: 1.15, waves: 0.5, shadow: 1.0, ring: 1.0
+}));
+$('preset-science').addEventListener('click', () => applyPreset({
+    spin: 0.6, speed: 2.8, brightness: 0.9, exposure: 1.1, distortion: 1.0,
+    tilt: 0.08, doppler: 1.8, swirl: 2.2, jetPower: 0.4, density: 1.2,
+    quality: 1.3, waves: 0.9, shadow: 1.0, ring: 1.0
+}));
+$('preset-kerr').addEventListener('click', () => applyPreset({
+    spin: 0.998, speed: 2.5, brightness: 1.3, exposure: 0.9, distortion: 1.4,
+    tilt: 0.45, doppler: 1.6, swirl: 2.4, jetPower: 1.2, density: 1.6,
+    quality: 1.2, waves: 0.7, shadow: 1.1, ring: 1.2
+}));
+$('preset-eht').addEventListener('click', () => applyPreset({
+    spin: 0.94, speed: 1.6, brightness: 1.5, exposure: 0.85, distortion: 1.2,
+    tilt: 0.5, doppler: 1.6, swirl: 1.8, jetPower: 0.5, density: 1.7,
+    quality: 1.2, waves: 0.4, shadow: 1.3, ring: 1.5
+}));
+$('preset-perf').addEventListener('click', () => applyPreset({
+    spin: 0.7, speed: 2.0, brightness: 1.1, exposure: 0.95, distortion: 1.1,
+    tilt: 0.25, doppler: 1.2, swirl: 1.5, jetPower: 0.6, density: 1.2,
+    quality: 0.75, waves: 0.4, shadow: 1.0, ring: 1.0
+}));
+
+$('preset-flare').addEventListener('click', () => {
+    params.flare = 1.0;
+    uniforms.uFlare.value = 1.0;
+    uniforms.uAgFlash.value = 1.0;
+    shakeCamera(0.4, 0.5);
+    showToast('Active galactic nucleus flare');
+    setTimeout(() => {
+        params.flare = 0;
+        uniforms.uFlare.value = 0;
+        uniforms.uAgFlash.value = 0;
+    }, 700);
+});
+
+setInterval(() => {
+    if (Math.random() < 0.12) {
+        uniforms.uAgFlash.value = 0.6 + Math.random() * 0.4;
+        setTimeout(() => { uniforms.uAgFlash.value = 0; }, 400 + Math.random() * 600);
+    }
+}, 5500);
+
+// ============================================================
+// CAMERA SHAKE
+// ============================================================
+let shakeIntensity = 0;
+let shakeDecay = 0;
+const shakeOffset = new THREE.Vector3();
+
+function shakeCamera(intensity, duration) {
+    shakeIntensity = intensity;
+    shakeDecay = intensity / duration;
+}
+
+// ============================================================
+// CAMERA ANIMATION
+// ============================================================
+let cameraAnim = null;
+const easeInOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+
+function startCameraAnim(fromPos, fromTarget, toPos, toTarget, duration, onComplete) {
+    cameraAnim = {
+        fromPos: fromPos.clone(), fromTarget: fromTarget.clone(),
+        toPos: toPos.clone(), toTarget: toTarget.clone(),
+        duration, elapsed: 0, onComplete
+    };
+}
+
+startBtn.addEventListener('click', () => {
+    const fromPos = virtCamera.position.clone();
+    const fromTarget = controls.target.clone();
+
+    const angles = [
+        new THREE.Vector3(16, 3, 12),
+        new THREE.Vector3(-12, 9, -16),
+        new THREE.Vector3(0, 14, 10),
+        new THREE.Vector3(12, -7, -14),
+        new THREE.Vector3(-14, 2, 10),
+        new THREE.Vector3(8, 12, -12),
+        new THREE.Vector3(0, 0.5, 9),
+        new THREE.Vector3(-8, -3, 12),
+        new THREE.Vector3(6, 1.5, 8)
+    ];
+    const pick = angles[Math.floor(Math.random() * angles.length)];
+
+    startCameraAnim(fromPos, fromTarget, pick, new THREE.Vector3(0, 0, 0), 3.8, () => {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+    });
+});
+
+renderer.domElement.addEventListener('mousedown', () => {
+    controls.autoRotate = false;
+    cameraAnim = null;
+});
+renderer.domElement.addEventListener('wheel', () => {
+    controls.autoRotate = false;
+});
+renderer.domElement.addEventListener('touchstart', () => {
+    controls.autoRotate = false;
+    cameraAnim = null;
+}, { passive: true });
+
+toggleBtn.addEventListener('click', () => controlsDiv.classList.toggle('hidden'));
+
+// ============================================================
+// INFO PANEL
+// ============================================================
+function openInfo() {
+    infoPanel.classList.add('show');
+    infoBtn.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeInfo() {
+    infoPanel.classList.remove('show');
+    infoBtn.classList.remove('active');
+    document.body.style.overflow = '';
+}
+infoBtn.addEventListener('click', openInfo);
+infoClose.addEventListener('click', closeInfo);
+infoPanel.addEventListener('click', e => {
+    if (e.target === infoPanel) closeInfo();
+});
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (infoPanel.classList.contains('show')) {
+        if (e.key === 'Escape') closeInfo();
+        return;
+    }
+
+    switch(e.key.toLowerCase()) {
+        case ' ':
+            e.preventDefault();
+            params.paused = !params.paused;
+            showToast(params.paused ? 'Paused' : 'Resumed');
+            break;
+        case 'r':
+            virtCamera.position.set(0, 5, 24);
+            controls.target.set(0, 0, 0);
+            controls.autoRotate = false;
+            cameraAnim = null;
+            showToast('Camera reset');
+            break;
+        case 'h':
+            controlsDiv.classList.toggle('hidden');
+            document.getElementById('info').style.opacity =
+                controlsDiv.classList.contains('hidden') ? '0' : '1';
+            showToast(controlsDiv.classList.contains('hidden') ? 'UI hidden' : 'UI shown');
+            break;
+        case 's':
+            composer.render();
+            try {
+                const dataURL = renderer.domElement.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'gargantua_' + Date.now() + '.png';
+                link.href = dataURL;
+                link.click();
+                showToast('Screenshot saved');
+            } catch(err) {
+                showToast('Screenshot error');
+            }
+            break;
+        case '?':
+        case '/':
+            openInfo();
+            break;
+    }
+});
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+const clock = new THREE.Clock();
+let frames = 0;
+let fpsTime = 0;
+let smoothedExposure = 1.0;
+let accumulatedTime = 0;
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const delta = Math.min(clock.getDelta(), 0.05);
+
+    frames++;
+    fpsTime += delta;
+    if (fpsTime >= 0.5) {
+        fpsEl.textContent = Math.round(frames / fpsTime) + ' FPS';
+        frames = 0;
+        fpsTime = 0;
+    }
+
+    if (cameraAnim) {
+        cameraAnim.elapsed += delta;
+        const progress = Math.min(cameraAnim.elapsed / cameraAnim.duration, 1.0);
+        const eased = easeInOutCubic(progress);
+        virtCamera.position.lerpVectors(cameraAnim.fromPos, cameraAnim.toPos, eased);
+        controls.target.lerpVectors(cameraAnim.fromTarget, cameraAnim.toTarget, eased);
+        if (progress >= 1.0) {
+            if (cameraAnim.onComplete) cameraAnim.onComplete();
+            cameraAnim = null;
+        }
+    }
+
+    if (!params.paused) controls.update();
+
+    if (shakeIntensity > 0) {
+        shakeIntensity = Math.max(0, shakeIntensity - shakeDecay * delta);
+        shakeOffset.set(
+            (Math.random() - 0.5) * shakeIntensity,
+            (Math.random() - 0.5) * shakeIntensity,
+            (Math.random() - 0.5) * shakeIntensity
+        );
+    } else {
+        shakeOffset.set(0, 0, 0);
+    }
+
+    if (!params.paused) {
+        accumulatedTime += delta * params.speed * params.boost;
+    }
+
+    let targetExposure = params.exposure;
+    if (params.autoExposure) {
+        const autoFactor = 1.1 - params.brightness * 0.25;
+        targetExposure = params.exposure * Math.max(0.5, Math.min(1.4, autoFactor));
+    }
+    smoothedExposure += (targetExposure - smoothedExposure) * 0.08;
+    uniforms.uExposure.value = smoothedExposure;
+
+    uniforms.uTime.value = accumulatedTime;
+    uniforms.uCamPos.value.copy(virtCamera.position).add(shakeOffset);
+
+    bloomPass.strength = 0.35 + Math.min(0.7, params.brightness * 0.35);
+    bloomPass.radius = params.quality < 0.85 ? 0.6 : 0.72;
+
+    const displaySpeed = params.speed * params.boost;
+    speedIndicator.textContent = 'SPEED: ' + displaySpeed.toFixed(2) + '×' + (params.paused ? ' ⏸' : '');
+
+    composer.render();
+}
+
+// ============================================================
+// RESIZE
+// ============================================================
+window.addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    composer.setSize(innerWidth, innerHeight);
+    uniforms.uResolution.value.set(innerWidth, innerHeight);
+    virtCamera.aspect = innerWidth / innerHeight;
+    virtCamera.updateProjectionMatrix();
+});
+
+// ============================================================
+// STARTUP
+// ============================================================
+setTimeout(() => {
+    $('loader').classList.add('hide');
+
+    startCameraAnim(
+        new THREE.Vector3(0, 22, 34),
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 6, 24),
+        new THREE.Vector3(0, 0, 0),
+        2.8,
+        () => {
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.28;
+        }
+    );
+
+    showToast('Press ? for help');
+}, 800);
+
+animate();
+</script>
+</body>
+</html>
