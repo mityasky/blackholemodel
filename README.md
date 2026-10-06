@@ -112,7 +112,7 @@ Observed black-body temperature `T_obs = T_emit · g`, converted to RGB via Tann
 
 ---
 
-## 🏗 Technical Stack
+## Technical Stack
 
 - **[Three.js](https://threejs.org/)** r160 — WebGL rendering
 - **Custom GLSL shaders** — full-screen ray-marching with geodesic integration
@@ -122,7 +122,7 @@ Observed black-body temperature `T_obs = T_emit · g`, converted to RGB via Tann
 
 ---
 
-## 📱 Mobile Support
+## Mobile Support
 
 The interface automatically adapts to small screens:
 
@@ -134,7 +134,7 @@ The interface automatically adapts to small screens:
 
 ---
 
-## 🙏 Credits
+## Credits
 
 - Physics: Kerr (1963), Bardeen–Press–Teukolsky (1972), Shakura–Sunyaev (1973)
 - Planck color approximation: Tanner Helland
