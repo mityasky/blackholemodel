@@ -2,13 +2,9 @@
 
 Real-time relativistic visualization of a rotating **Kerr black hole** with a volumetric accretion disk, ray-marched entirely on the GPU.
 
-**[▶ Live demo](https://YOUR-USERNAME.github.io/gargantua/)**
-
-![Preview](preview.png)
-
 ---
 
-## ✨ Features
+## Features
 
 - **True Kerr metric** — event horizon, ISCO, photon sphere
 - **RK4 photon geodesics** — 4th-order Runge-Kutta integration of `d²u/dφ² = 1.5·Rs·u² − u`
@@ -25,31 +21,6 @@ Real-time relativistic visualization of a rotating **Kerr black hole** with a vo
 - **LocalStorage** — your settings persist between sessions
 - **Screenshot** with a single key (`S`)
 - **Fully mobile-adaptive** — works on phones, tablets, and desktops
-
----
-
-## 🚀 Quick Start
-
-### Option 1 — Open directly
-
-Download `index.html` and open it in a modern browser (Chrome, Firefox, Edge, Safari). Internet connection is required — Three.js is loaded from a CDN.
-
-### Option 2 — GitHub Pages
-
-1. Fork or clone this repository.
-2. Go to **Settings → Pages**.
-3. Under "Source", select **Deploy from a branch** → `main` / `root`.
-4. Save. Your site will be live at `https://YOUR-USERNAME.github.io/gargantua/`.
-
-### Option 3 — Local server
-
-```bash
-python -m http.server 8000
-# or
-npx serve
-```
-
-Then open `http://localhost:8000`.
 
 ---
 
@@ -160,12 +131,6 @@ The interface automatically adapts to small screens:
 - Info panel becomes scrollable fullscreen
 - Touch controls: drag to rotate, pinch to zoom
 - Landscape mode has special layout
-
----
-
-## 📄 License
-
-MIT — see [LICENSE](LICENSE).
 
 ---
 
